@@ -1,0 +1,203 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  phone         String?   @unique
+  password      String
+  name          String?
+  role          Role      @default(CUSTOMER)
+  currency      String    @default("USD")
+  language      String    @default("en")
+  timezone      String    @default("UTC")
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions     Session[]
+  payments     Payment[]
+  vouchers     Voucher[]      @relation("UserVouchers")
+  loginHistory LoginHistory[]
+}
+
+model Hotspot {
+  id             String   @id @default(cuid())
+  name           String
+  ssid           String   @unique
+  password       String?
+  location       String
+  address        String?
+  city           String?
+  country        String   @default("KE")
+  coordinates    String? // "lat,lng"
+  pricePerHour   Float    @default(0.5)
+  pricePerDay    Float    @default(5.0)
+  pricePerMonth  Float    @default(50.0)
+  isActive       Boolean  @default(true)
+  maxConnections Int      @default(50)
+  bandwidthLimit Int? // Mbps, null = unlimited
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  sessions Session[]
+}
+
+model Session {
+  id          String        @id @default(cuid())
+  userId      String
+  hotspotId   String
+  startTime   DateTime      @default(now())
+  endTime     DateTime?
+  duration    Int? // seconds
+  dataUsed    BigInt? // bytes
+  bytesIn     BigInt?       @default(0)
+  bytesOut    BigInt?       @default(0)
+  status      SessionStatus @default(ACTIVE)
+  ipAddress   String?
+  userAgent   String?
+  macAddress  String?
+  deviceName  String?
+  packageId   String?
+  voucherCode String?
+  ratePerHour Float?
+  charged     Float?        @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hotspot Hotspot  @relation(fields: [hotspotId], references: [id], onDelete: Cascade)
+  package Package? @relation(fields: [packageId], references: [id])
+  voucher Voucher? @relation("VoucherSessions", fields: [voucherCode], references: [code])
+}
+
+model Package {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  duration    Int // minutes
+  dataLimit   BigInt? // bytes, null = unlimited
+  price       Float
+  currency    String   @default("USD")
+  isActive    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sessions Session[]
+  payments Payment[]
+  vouchers  Voucher[]
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  userId      String?
+  amount      Float
+  currency    String        @default("USD")
+  status      PaymentStatus @default(PENDING)
+  method      PaymentMethod
+  provider    String? // "stripe", "mpesa", "manual"
+  providerId  String? // external transaction ID
+  packageId   String?
+  sessionId   String?
+  voucherCode String?
+  phoneNumber String? // for M-Pesa
+  email       String? // for Stripe
+  receiptUrl  String?
+  metadata    Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user    User?   @relation(fields: [userId], references: [id])
+  package Package? @relation(fields: [packageId], references: [id])
+}
+
+model Voucher {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  packageId   String
+  duration    Int // minutes
+  dataLimit   BigInt? // bytes, null = unlimited
+  maxUses     Int       @default(1)
+  usedCount   Int       @default(0)
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  purchasedBy String?
+  notes       String?
+  qrCode      Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  sessions Session[] @relation("VoucherSessions")
+  user     User?     @relation("UserVouchers", fields: [purchasedBy], references: [id])
+  package  Package   @relation(fields: [packageId], references: [id])
+}
+
+model LoginHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  ipAddress String
+  userAgent String?
+  success   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Analytics {
+  id        String   @id @default(cuid())
+  date      DateTime @default(now())
+  hotspotId String?
+  metric    String // "sessions", "revenue", "users", "data"
+  value     Float
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@unique([hotspotId, date, metric])
+  @@index([date])
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  type  String @default("string") // "string", "number", "boolean", "json"
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+enum SessionStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  EXPIRED
+  TERMINATED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  STRIPE
+  MPESA
+  VOUCHER
+  MANUAL
+}
