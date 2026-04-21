@@ -1,0 +1,23 @@
+{
+  "buildCommand": "bun run next build",
+  "devCommand": "bun run next dev -p $PORT",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "env": {
+    "NEXTAUTH_URL": {
+      "required": true
+    },
+    "NEXTAUTH_SECRET": {
+      "required": true
+    },
+    "DATABASE_URL": {
+      "required": true
+    }
+  },
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 10
+    }
+  },
+  "regions": ["iad1"]
+}
