@@ -10,10 +10,12 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/captive') ||
     pathname.startsWith('/login') ||
+    pathname.startsWith('/register') ||
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/hotspots') ||
     pathname.startsWith('/api/packages') ||
-    pathname.startsWith('/api/vouchers/validate')
+    pathname.startsWith('/api/vouchers') ||
+    pathname.startsWith('/api/qrcode')
   ) {
     return NextResponse.next()
   }
@@ -35,18 +37,33 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return NextResponse.next()
+  const response = NextResponse.next()
+  
+  // Security headers
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+
+  // CSP for captive portals (allows loading of captive portal assets)
+  if (pathname.startsWith('/captive')) {
+    response.headers.set(
+      'Content-Security-Policy',
+      "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;"
+    )
+  }
+
+  return response
 }
 
 export const config = {
   matcher: [
-    // Admin routes
     '/admin/:path*',
-    // Account routes
     '/account/:path*',
-    // API routes
     '/api/sessions/:path*',
     '/api/payments/:path*',
-    '/api/admin/:path*'
+    '/api/admin/:path*',
+    '/captive/:path*',
+    '/login',
+    '/register'
   ]
 }
