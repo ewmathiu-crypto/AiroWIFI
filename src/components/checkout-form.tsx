@@ -209,7 +209,7 @@ export default function CheckoutForm() {
                   required
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  You'll receive an STK push to complete payment
+                  You&apos;ll receive an STK push to complete payment
                 </p>
               </div>
             )}

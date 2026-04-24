@@ -10,7 +10,7 @@ export default function StatusPage() {
         </div>
         <h1 className="text-3xl font-bold text-white">Processing Payment</h1>
         <p className="text-lg text-gray-300">
-          We're processing your payment. Please wait a moment...
+          We&apos;re processing your payment. Please wait a moment...
         </p>
       </div>
     </div>}>
